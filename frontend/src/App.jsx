@@ -1,5 +1,5 @@
 import React from "react";
-import { BrowserRouter, Route, Routes } from "react-router-dom";
+import { BrowserRouter, Route, Routes, useLocation } from "react-router-dom";
 import Navbar from "./components/Navbar.jsx";
 import Login from "./pages/Login.jsx";
 import Signup from "./pages/Signup.jsx";
@@ -21,11 +21,16 @@ const AuthLayout = ({ children }) => (
   </div>
 );
 
-const App = () => {
+const AppContent = () => {
+  const location = useLocation();
+  // Hide Navbar, Footer and remove pt-15 padding on standard Auth routes
+  const isAuthPage = ["/login", "/signup", "/"].includes(location.pathname);
+
   return (
-    <BrowserRouter>
-      <Navbar />
-      <main className="app-bg min-h-screen pt-15 flex flex-col">
+    <>
+      {!isAuthPage && <Navbar />}
+      
+      <main className={`app-bg min-h-screen flex flex-col ${isAuthPage ? "" : "pt-15"}`}>
         <Routes>
           <Route path="/"       element={<PublicRoute><AuthLayout><Login /></AuthLayout></PublicRoute>} />
           <Route path="/login"  element={<PublicRoute><AuthLayout><Login /></AuthLayout></PublicRoute>} />
@@ -74,10 +79,18 @@ const App = () => {
           <Route path="*" element={<NotFound />} />
         </Routes>
       </main>
-      <Footer />
+
+      {!isAuthPage && <Footer />}
       <ScrollToTop />
+    </>
+  );
+};
+
+const App = () => {
+  return (
+    <BrowserRouter>
+      <AppContent />
     </BrowserRouter>
-    
   );
 };
 
