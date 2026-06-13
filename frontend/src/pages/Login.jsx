@@ -1,33 +1,14 @@
-import { useContext, useRef, useState, useEffect } from "react";
+import { useContext, useState } from "react";
 import { useNavigate, Link, useLocation } from "react-router-dom";
-import { motion } from "framer-motion";
-import { 
-  Eye, 
-  EyeOff, 
-  Sun, 
-  Moon, 
-  Sparkles, 
-  TrendingUp, 
-  Shield, 
-  CheckCircle2, 
-  ArrowRight,
-  Mail,
-  Lock,
-  Compass
-} from "lucide-react";
+import { Eye, EyeOff } from "lucide-react";
 import api from "../api/axios";
 import { AuthContext } from "../context/AuthContext.jsx";
-import { ThemeContext } from "../context/ThemeContext.jsx";
 import { auth, googleProvider } from "../utils/firebase";
 import { signInWithPopup } from "firebase/auth";
+import FormError from "../components/common/FormError";
 
-// Google Icon Component
 const GoogleIcon = () => (
-  <svg
-    className="w-5 h-5 mr-3 flex-shrink-0"
-    viewBox="0 0 24 24"
-    fill="none"
-  >
+  <svg className="w-5 h-5 mr-2.5 flex-shrink-0" viewBox="0 0 24 24" fill="none">
     <path
       d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
       fill="#4285F4"
@@ -47,10 +28,9 @@ const GoogleIcon = () => (
   </svg>
 );
 
-// Loading Spinner Component
 const LoadingSpinner = () => (
   <svg
-    className="animate-spin -ml-1 mr-3 h-5 w-5 text-current"
+    className="animate-spin -ml-1 mr-2.5 h-5 w-5 text-current"
     fill="none"
     viewBox="0 0 24 24"
   >
@@ -70,437 +50,219 @@ const LoadingSpinner = () => (
   </svg>
 );
 
-// Custom spring-animated theme toggle switch
-const CustomThemeToggle = () => {
-  const { theme, toggleTheme } = useContext(ThemeContext);
-  const isDark = theme === "dark";
-
-  return (
-    <div className="flex items-center gap-3">
-      <span className="text-xs font-semibold tracking-wider text-slate-500 dark:text-slate-400 uppercase select-none">
-        {isDark ? "Obsidian" : "Crisp Slate"}
-      </span>
-      <button
-        type="button"
-        onClick={toggleTheme}
-        className="group relative w-16 h-8 rounded-full bg-slate-200 dark:bg-slate-800 border border-slate-300/30 dark:border-slate-700/50 shadow-inner flex items-center p-1 cursor-pointer transition-colors duration-500 focus:outline-none"
-        aria-label="Toggle layout theme"
-      >
-        {/* Sliding thumb */}
-        <div
-          className="w-6 h-6 rounded-full bg-gradient-to-tr from-[#6366F1] to-[#4F46E5] flex items-center justify-center shadow-lg relative z-10"
-          style={{
-            transform: isDark ? "translateX(32px)" : "translateX(0)",
-            transition: "transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1)"
-          }}
-        >
-          <div className="relative w-full h-full flex items-center justify-center">
-            <Sun
-              size={12}
-              className={`absolute text-white transition-all duration-300 transform ${
-                isDark ? "opacity-0 scale-50 rotate-90" : "opacity-100 scale-100 rotate-0"
-              }`}
-            />
-            <Moon
-              size={12}
-              className={`absolute text-white transition-all duration-300 transform ${
-                isDark ? "opacity-100 scale-100 rotate-0" : "opacity-0 scale-50 -rotate-90"
-              }`}
-            />
-          </div>
-        </div>
-
-        {/* Fading background icons inside switch */}
-        <div className="absolute inset-0 flex justify-between items-center px-2 pointer-events-none">
-          <Sun
-            size={11}
-            className={`text-amber-500 transition-opacity duration-300 ${
-              isDark ? "opacity-35" : "opacity-0"
-            }`}
-          />
-          <Moon
-            size={11}
-            className={`text-indigo-400 transition-opacity duration-300 ${
-              isDark ? "opacity-0" : "opacity-35"
-            }`}
-          />
-        </div>
-      </button>
-    </div>
-  );
-};
-
 const Login = () => {
-  // Auth Form State
+
+
+  // two states for inputs
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
   const [isSubmitLoading, setIsSubmitLoading] = useState(false);
+  const [totpCode, setTotpCode] = useState("");
+  const [tempUserId, setTempUserId] = useState(null);
 
-  // Interactive Milestone State
-  const [activeMilestone, setActiveMilestone] = useState(3);
-  const [isTimelineHovered, setIsTimelineHovered] = useState(false);
-
-  // Auto-switch timeline milestones every 3 seconds unless hovered
-  useEffect(() => {
-    if (isTimelineHovered) return;
-    const timer = setInterval(() => {
-      setActiveMilestone((prev) => (prev + 1) % 4);
-    }, 3000);
-    return () => clearInterval(timer);
-  }, [isTimelineHovered]);
-
+  // useNavigate object
   const navigate = useNavigate();
   const location = useLocation();
-  const { setUser } = useContext(AuthContext);
-
   const redirectPath = location.state?.from || "/dashboard";
 
-  // Google OAuth Login
+  // useContext for auth
+  const { setUser } = useContext(AuthContext);
+
+
+
+
+
   const handleGoogleLogin = async () => {
+    console.log("auth:", auth);
+    console.log("googleProvider:", googleProvider);
+
     setIsGoogleLoading(true);
     setError("");
     try {
       localStorage.removeItem("token");
       const result = await signInWithPopup(auth, googleProvider);
       const idToken = await result.user.getIdToken();
-      const res = await api.post("/auth/google", { idToken });
+      const res = await api.post("/auth/google-login", { idToken });
       setUser(res.data.user);
       navigate(redirectPath, { replace: true });
     } catch (err) {
       console.error(err);
+
       setError(
         err.response?.data?.message ||
-          err.message ||
-          "Failed to log in with Google."
+        err.message ||
+        "Failed to log in with Google."
       );
     } finally {
       setIsGoogleLoading(false);
     }
   };
 
-  // Email/Password Login Form Submission
   const handleSubmit = async (e) => {
+    // prevents page from refreshing
     e.preventDefault();
     setIsSubmitLoading(true);
     setError("");
     try {
-      await api.post("/auth/login", { email, password });
+      const res = await api.post("/auth/login", { email, password });
+      if (res.data.requires2FA) {
+        setTempUserId(res.data.tempUserId);
+        return;
+      }
       const me = await api.get("/auth/me");
       setUser(me.data.user);
       navigate(redirectPath, { replace: true });
-    } catch (err) {
-      setError(
-        err.response?.data?.message ||
-          "Invalid email or password."
-      );
+    } catch (error) {
+      setError(error.response?.data?.message || "Invalid email or password.");
     } finally {
       setIsSubmitLoading(false);
     }
   };
 
-  // Interactive Timeline Configuration
-  const milestones = [
-    {
-      year: "Phase 1: Spark (2024)",
-      title: "The Forge Genesis",
-      description: "Conceived as an elite productivity companion designed to elevate routine consistency and task tracking.",
-      icon: Sparkles,
-    },
-    {
-      year: "Phase 2: Launch (2025)",
-      title: "Pioneering Beta Engine",
-      description: "Released to over 10,000 active beta builders, logging millions of automated task accomplishments.",
-      icon: TrendingUp,
-    },
-    {
-      year: "Phase 3: Insight (Early 2026)",
-      title: "Elite Consistency Index",
-      description: "Integrated gorgeous analytics, custom consistency charts, and robust historical database insights.",
-      icon: Shield,
-    },
-    {
-      year: "Phase 4: Frontier (Late 2026)",
-      title: "AI-Powered Adaptive Habits",
-      description: "Unlocking today: dynamic AI-guided routines, automated time blocks, and cooperative workflows. Join at the peak.",
-      icon: CheckCircle2,
-    },
-  ];
-
-  // Framer Motion staggered configurations
-  const timelineContainerVariants = {
-    hidden: { opacity: 0 },
-    show: {
-      opacity: 1,
-      transition: {
-        staggerChildren: 0.12,
-        delayChildren: 0.1
-      }
+  const handle2FASubmit = async (e) => {
+    e.preventDefault();
+    setError("");
+    try {
+      await api.post("/auth/login-2fa", { tempUserId, token: totpCode });
+      const me = await api.get("/auth/me");
+      setUser(me.data.user);
+      navigate(redirectPath, { replace: true });
+    } catch (error) {
+      setError(error.response?.data?.message || "Invalid 2FA code.");
     }
   };
 
-  const timelineItemVariants = {
-    hidden: { opacity: 0, x: -20 },
-    show: { opacity: 1, x: 0, transition: { type: "spring", stiffness: 120, damping: 18 } }
-  };
+  if (tempUserId) {
+    return (
+      <div className="auth-page-bg min-h-[calc(100vh-3.75rem)] w-full flex items-center justify-center px-6 pt-10 pb-24 md:pb-32 overflow-hidden relative">
+        <div className="absolute top-[-120px] left-[-80px] w-[340px] h-[570px] rounded-full bg-indigo-500/20 blur-3xl"></div>
+        <div className="absolute bottom-[-140px] right-[-80px] w-[550px] h-[350px] rounded-full bg-sky-500/20 blur-3xl"></div>
+        <form
+          onSubmit={handle2FASubmit}
+          className="surface-bg animate-in-slow w-full max-w-md rounded-[30px] px-8 py-10 flex flex-col gap-6 border border-white/10 shadow-[0_20px_60px_rgba(0,0,0,0.7)] hover-lift hover:scale-50 transition-transform duration-500 ease-out"
+        >
+          <div className="text-center space-y-2">
+            <h1 className="text-4xl font-bold tracking-tight text-main">
+              Two-Factor Auth
+            </h1>
+            <p className="text-sm text-muted">
+              Enter the code from your authenticator app
+            </p>
+          </div>
+          <div className="flex flex-col gap-2">
+            <label htmlFor="totp" className="text-sm font-medium text-main">
+              TOTP Code
+            </label>
+            <input
+              type="text"
+              id="totp"
+              placeholder="123456"
+              required
+              value={totpCode}
+              onChange={(e) => setTotpCode(e.target.value)}
+              className="input-modern w-full px-4 py-3 rounded-2xl text-sm border-1 border-slate-200"
+            />
+          </div>
+          <FormError error={error} />
+          <button
+            type="submit"
+            className="btn btn-primary w-full py-3 rounded-2xl cursor-pointer"
+          >
+
+            Verify
+          </button>
+        </form>
+      </div>
+    );
+  }
 
   return (
-    <div className="min-h-screen w-full flex flex-col md:flex-row bg-[#F8FAFC] dark:bg-[#0F172A] text-[#1E293B] dark:text-[#F8FAFC] transition-colors duration-500 overflow-x-hidden relative">
-      
-      {/* Blueprint Grid Aesthetic Overlay */}
-      <div className="absolute inset-0 bg-[linear-gradient(to_right,#8080800a_1px,transparent_1px),linear-gradient(to_bottom,#8080800a_1px,transparent_1px)] bg-[size:20px_20px] pointer-events-none"></div>
-
-      {/* Premium dynamic glow blobs */}
-      <div className="absolute top-[-10%] left-[-10%] w-[50%] h-[50%] rounded-full bg-gradient-to-br from-indigo-500/10 to-violet-500/10 blur-3xl opacity-60 pointer-events-none"></div>
-      <div className="absolute bottom-[-10%] right-[-10%] w-[50%] h-[50%] rounded-full bg-gradient-to-tr from-sky-500/10 to-purple-500/10 blur-3xl opacity-60 pointer-events-none"></div>
-
-      {/* Top Left Floating Logo */}
-      <div className="absolute top-6 left-6 md:left-12 lg:left-20 z-40 flex items-center gap-2.5">
-        <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-[#6366F1] to-[#4F46E5] flex items-center justify-center shadow-md">
-          <span className="text-white font-extrabold text-lg leading-none select-none">D</span>
-        </div>
-        <span className="text-xl font-bold bg-gradient-to-r from-slate-900 to-indigo-950 dark:from-white dark:to-indigo-200 bg-clip-text text-transparent select-none">
-          DailyForge
-        </span>
-      </div>
-
-      {/* Absolute Float Header (Includes switch toggle) */}
-      <header className="absolute top-6 right-6 z-40 flex items-center gap-4">
-        <CustomThemeToggle />
-      </header>
-
-      {/* COLUMN A: Interactive Story & Website Timeline (Left) */}
-      <section className="w-full md:w-[48%] lg:w-[45%] flex flex-col justify-center px-6 pt-24 pb-12 md:py-20 md:pl-12 lg:pl-20 relative z-10 border-b md:border-b-0 md:border-r border-slate-200/50 dark:border-slate-800/60">
-        <div className="max-w-md mx-auto md:mx-0 w-full space-y-8">
-          
-          {/* Logo & Headline */}
-          <div className="space-y-3">
-            <div className="inline-flex items-center gap-2.5 px-3.5 py-1.5 rounded-full bg-indigo-500/8 dark:bg-indigo-500/15 border border-[#6366F1]/20 dark:border-[#6366F1]/30">
-              <Compass className="w-4 h-4 text-[#6366F1] animate-spin-slow" />
-              <span className="text-xs font-bold tracking-wider text-[#6366F1] uppercase">The DailyForge Story</span>
-            </div>
-            <h2 className="text-3xl lg:text-4xl font-extrabold tracking-tight bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 dark:from-white dark:via-indigo-200 dark:to-white bg-clip-text text-transparent leading-tight">
-              Unlock Your Elite Consistency Core
-            </h2>
-            <p className="text-sm text-slate-500 dark:text-slate-400 leading-relaxed">
-              Explore our roadmap of evolution. Every step is engineered to turn chaos into compounding routines. Hover to highlight each epoch.
-            </p>
-          </div>
-
-          {/* Interactive Visual Timeline */}
-          <div 
-            onMouseEnter={() => setIsTimelineHovered(true)}
-            onMouseLeave={() => setIsTimelineHovered(false)}
-            className="relative pl-3 space-y-6"
-          >
-            
-            {/* Elegant Vertical Line with top/bottom fade */}
-            <div className="absolute left-[23px] top-6 bottom-6 w-[2px] bg-gradient-to-b from-transparent via-indigo-300 dark:via-indigo-900/60 to-transparent pointer-events-none"></div>
-
-            <motion.div 
-              variants={timelineContainerVariants}
-              initial="hidden"
-              animate="show"
-              className="space-y-6"
-            >
-              {milestones.map((milestone, index) => {
-                const MilestoneIcon = milestone.icon;
-                const isActive = activeMilestone === index;
-                const isCurrent = index === 3; // Latest milestone
-
-                return (
-                  <motion.div
-                    key={index}
-                    variants={timelineItemVariants}
-                    onMouseEnter={() => setActiveMilestone(index)}
-                    className="flex gap-5 items-start select-none"
-                  >
-                    
-                    {/* Ring Node */}
-                    <div className="relative flex items-center justify-center pt-1.5">
-                      <div 
-                        className={`w-10 h-10 rounded-full flex items-center justify-center transition-all duration-500 border-2 z-10 relative cursor-pointer ${
-                          isActive 
-                            ? "bg-gradient-to-tr from-[#6366F1] to-[#4F46E5] border-[#6366F1] text-white shadow-lg shadow-indigo-500/25" 
-                            : "bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-400 dark:text-slate-600 hover:border-indigo-500/50"
-                        } ${isCurrent && !isActive ? "animate-pulse-ring" : ""}`}
-                      >
-                        <MilestoneIcon size={16} className={isActive ? "animate-pulse" : ""} />
-                      </div>
-                      
-                      {/* Separate glowing active dot indicator behind */}
-                      {isActive && (
-                        <div className="absolute inset-0 w-10 h-10 bg-indigo-500/30 rounded-full blur-xs animate-ping"></div>
-                      )}
-                    </div>
-
-                    {/* Timeline Content Card */}
-                    <div 
-                      className={`flex-1 p-5 rounded-2xl border transition-all duration-300 cursor-pointer transform ${
-                        isActive 
-                          ? "bg-white dark:bg-slate-800/80 border-slate-200 dark:border-slate-700/60 shadow-[0_10px_30px_rgba(99,102,241,0.06)] dark:shadow-[0_10px_30px_rgba(0,0,0,0.25)] translate-x-1.5" 
-                          : "bg-transparent border-transparent opacity-65 hover:opacity-100"
-                      }`}
-                    >
-                      <span className={`text-[10px] font-bold uppercase tracking-widest ${
-                        isActive ? "text-[#6366F1]" : "text-slate-400 dark:text-slate-500"
-                      }`}>
-                        {milestone.year}
-                      </span>
-                      <h3 className={`text-sm font-bold mt-0.5 transition-colors ${
-                        isActive ? "text-slate-900 dark:text-white" : "text-slate-700 dark:text-slate-300"
-                      }`}>
-                        {milestone.title}
-                      </h3>
-                      <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 leading-relaxed">
-                        {milestone.description}
-                      </p>
-                    </div>
-                  </motion.div>
-                );
-              })}
-            </motion.div>
-          </div>
-        </div>
-      </section>
-
-      {/* COLUMN B: High-Conversion Login Form (Right) */}
-      <section className="flex-1 flex items-center justify-center px-6 py-12 md:py-20 relative z-10">
-        <motion.div
-          initial={{ opacity: 0, scale: 0.96, y: 25 }}
-          animate={{ opacity: 1, scale: 1, y: 0 }}
-          transition={{ duration: 0.6, type: "spring", bounce: 0.1 }}
-          className="w-full max-w-md bg-white dark:bg-slate-900/80 rounded-[2.5rem] border border-slate-200/60 dark:border-slate-800/80 p-8 sm:p-10 shadow-[0_20px_50px_rgba(99,102,241,0.05)] dark:shadow-[0_20px_50px_rgba(0,0,0,0.35)] backdrop-blur-xl transition-all duration-300"
-        >
-          {/* Header Title */}
-          <div className="text-center space-y-2 mb-8">
-            <h1 className="text-3xl font-extrabold tracking-tight text-slate-950 dark:text-white">
+    <div className="auth-page-bg min-h-[calc(100vh-3.75rem)] w-full flex items-center justify-center px-6 pt-10 pb-24 md:pb-32 overflow-hidden relative">
+      <div className="absolute top-[-120px] left-[-80px] w-[340px] h-[570px] rounded-full bg-indigo-500/20 blur-3xl"></div>
+      <div className="absolute bottom-[-140px] right-[-80px] w-[550px] h-[350px] rounded-full bg-sky-500/20 blur-3xl"></div>
+      <div className="absolute top-[-140px] right-[-80px] w-[550px] h-[350px] rounded-full bg-violet-500/20 blur-3xl"></div>
+      <div className="relative z-10 w-full max-w-md animate-in-slow">
+        <form onSubmit={handleSubmit} className="surface-bg hover-lift w-full rounded-[30px] px-8 py-10 flex flex-col gap-6 border border-white/10 shadow-[0_20px_60px_rgba(0,0,0,0.7)]">
+          <div className="text-center space-y-2">
+            <h1 className="text-4xl font-bold tracking-tight text-main">
               Welcome Back
             </h1>
-            <p className="text-xs text-slate-500 dark:text-slate-400">
-              Login to continue your compounding consistency
+            <p className="text-sm text-muted">
+              Login to continue your experience
             </p>
           </div>
+          <button type="button" onClick={handleGoogleLogin} disabled={isGoogleLoading || isSubmitLoading} className="
+flex items-center justify-center
+w-full px-4 py-3
+rounded-2xl
+!bg-white
+!text-black
+!border
+!border-gray-300
+font-medium
+shadow-sm
+transition-all duration-200
+hover:bg-gray-50
+hover:border-gray-400
+hover:-translate-y-[1px]
+hover:shadow-md
+dark:bg-slate-900/50
+dark:border-slate-700
+dark:text-slate-100
+disabled:opacity-50
+cursor-pointer
+">
 
-          <form onSubmit={handleSubmit} className="space-y-4">
-            
-            {/* Validation Server/Firebase Error */}
-            {error && (
-              <motion.div
-                initial={{ opacity: 0, y: -10 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="px-4 py-3 rounded-2xl text-xs font-semibold border bg-rose-500/10 border-rose-500/20 text-rose-500 leading-relaxed"
-              >
-                {error}
-              </motion.div>
-            )}
-
-            {/* Email Address Input */}
-            <div className="space-y-1.5 relative">
-              <label 
-                htmlFor="email" 
-                className="text-xs font-bold tracking-wider text-slate-600 dark:text-slate-300 uppercase ml-1"
-              >
-                Email Address
-              </label>
-              <div className="relative group">
-                <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400/80 group-focus-within:text-[#6366F1] transition-colors" />
-                <input
-                  type="email"
-                  id="email"
-                  placeholder="e.g. builder@dailyforge.com"
-                  required
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  className="w-full pl-11 pr-4 py-3.5 rounded-2xl text-sm bg-slate-50/50 dark:bg-slate-800/40 border border-slate-200/80 dark:border-slate-800/60 text-slate-900 dark:text-slate-100 placeholder-slate-400/70 focus:placeholder-transparent outline-none transition-all duration-300 focus:bg-white dark:focus:bg-slate-900/40 focus:border-[#6366F1] focus:ring-[4px] focus:ring-[#6366F1]/15"
-                />
-              </div>
+            {isGoogleLoading ? <LoadingSpinner /> : <GoogleIcon />}
+            {isGoogleLoading ? "Connecting..." : "Continue with Google"}
+          </button>
+          <div className="flex items-center">
+            <div className="flex-1 h-px bg-white/20"></div>
+            <span className="px-4 text-xs font-semibold tracking-[0.2em] uppercase text-muted">
+              OR
+            </span>
+            <div className="flex-1 h-px bg-white/20"></div>
+          </div>
+          <div className="flex flex-col gap-2">
+            <label htmlFor="email" className="text-sm font-medium text-main">Email</label>
+            <input type="email" id="email" placeholder="user@email.com" required value={email} onChange={(e) => setEmail(e.target.value)} className="input-modern w-full px-4 py-3 rounded-2xl text-sm border-1
+                border-slate-200 " />
+          </div>
+          <div className="flex flex-col gap-2">
+            <label htmlFor="password" className="text-sm font-medium text-main">
+              Password
+            </label>
+            <div className="relative">
+              <input type={showPassword ? "text" : "password"} id="password" placeholder="••••••••" required value={password} onChange={(e) => setPassword(e.target.value)} className="input-modern w-full px-4 py-3 pr-11 rounded-2xl text-sm border-1
+                border-slate-200" />
+              <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-4 top-1/2 -translate-y-1/2 text-muted hover:text-main transition-colors cursor-pointer">
+                {showPassword ? <Eye size={18} /> : <EyeOff size={18} />}
+              </button>
             </div>
+          </div>
+          <FormError error={error} />
+          <button
+            type="submit"
+            disabled={isGoogleLoading || isSubmitLoading}
+            className="btn btn-primary w-full py-3 rounded-2xl cursor-pointer disabled:opacity-50"
+          >
 
-            {/* Password Input */}
-            <div className="space-y-1.5 relative">
-              <label 
-                htmlFor="password" 
-                className="text-xs font-bold tracking-wider text-slate-600 dark:text-slate-300 uppercase ml-1"
-              >
-                Password
-              </label>
-              <div className="relative group">
-                <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400/80 group-focus-within:text-[#6366F1] transition-colors" />
-                <input
-                  type={showPassword ? "text" : "password"}
-                  id="password"
-                  placeholder="••••••••"
-                  required
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  className="w-full pl-11 pr-11 py-3.5 rounded-2xl text-sm bg-slate-50/50 dark:bg-slate-800/40 border border-slate-200/80 dark:border-slate-800/60 text-slate-900 dark:text-slate-100 placeholder-slate-400/70 focus:placeholder-transparent outline-none transition-all duration-300 focus:bg-white dark:focus:bg-slate-900/40 focus:border-[#6366F1] focus:ring-[4px] focus:ring-[#6366F1]/15"
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors cursor-pointer"
-                  aria-label={showPassword ? "Hide password" : "Show password"}
-                >
-                  {showPassword ? <Eye size={16} /> : <EyeOff size={16} />}
-                </button>
-              </div>
-            </div>
-
-            {/* Submit Action Button */}
-            <button
-              type="submit"
-              disabled={isSubmitLoading || isGoogleLoading}
-              className="w-full mt-4 py-3.5 px-4 rounded-2xl text-white font-medium bg-gradient-to-r from-[#6366F1] to-[#4F46E5] hover:from-[#5A5DF0] hover:to-[#4338CA] shadow-[0_4px_14px_rgba(99,102,241,0.25)] hover:shadow-[0_6px_20px_rgba(99,102,241,0.35)] transition-all duration-300 transform hover:-translate-y-[1.5px] active:scale-[0.98] active:translate-y-0 cursor-pointer disabled:opacity-50 flex items-center justify-center text-sm"
+            {isSubmitLoading ? "Logging in..." : "Login"}
+          </button>
+          <p className="text-center text-sm text-muted">
+            Don&apos;t have an account?{" "}
+            <Link
+              to="/signup"
+              className="text-main font-semibold hover:underline"
             >
-              {isSubmitLoading ? (
-                <>
-                  <LoadingSpinner />
-                  Authenticating...
-                </>
-              ) : (
-                <>
-                  Login
-                  <ArrowRight size={16} className="ml-2 animate-pulse" />
-                </>
-              )}
-            </button>
-
-            {/* Divider */}
-            <div className="flex items-center my-5 py-1">
-              <div className="flex-1 h-px bg-slate-200 dark:bg-slate-800"></div>
-              <span className="px-4 text-[10px] font-bold tracking-[0.2em] uppercase text-slate-400 dark:text-slate-500">
-                OR
-              </span>
-              <div className="flex-1 h-px bg-slate-200 dark:bg-slate-800"></div>
-            </div>
-
-            {/* Google OAuth Button */}
-            <button
-              type="button"
-              onClick={handleGoogleLogin}
-              disabled={isGoogleLoading || isSubmitLoading}
-              className="flex items-center justify-center w-full px-4 py-3.5 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white/70 dark:bg-slate-900/50 text-slate-700 dark:text-slate-100 text-sm font-semibold transition-all duration-300 hover:bg-slate-50 dark:hover:bg-slate-800/80 hover:-translate-y-[1px] hover:shadow-xs disabled:opacity-50 cursor-pointer"
-            >
-              {isGoogleLoading ? <LoadingSpinner /> : <GoogleIcon />}
-              {isGoogleLoading ? "Connecting OAuth..." : "Continue with Google"}
-            </button>
-
-            {/* Form Footer */}
-            <p className="text-center text-xs text-slate-500 dark:text-slate-400 mt-6 pt-2">
-              Don't have an account?{" "}
-              <Link
-                to="/signup"
-                className="text-[#6366F1] font-bold hover:underline ml-1 hover:text-[#4F46E5] transition-colors"
-              >
-                Sign Up
-              </Link>
-            </p>
-          </form>
-        </motion.div>
-      </section>
+              Sign up
+            </Link>
+          </p>
+        </form>
+      </div>
     </div>
   );
 };
